@@ -54,3 +54,27 @@ internal class OcrEngine {
             clients.clear()
         }
     }
+
+    /** ML Kit rejects images smaller than 32 px on either side, so small crops are padded with white. */
+    private fun Gray.toBitmap(): Bitmap {
+        val outW = maxOf(w, MIN_SIDE)
+        val outH = maxOf(h, MIN_SIDE)
+        val offX = (outW - w) / 2
+        val offY = (outH - h) / 2
+        val out = IntArray(outW * outH) { WHITE }
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                val v = at(x, y)
+                out[(y + offY) * outW + (x + offX)] = (0xFF shl 24) or (v shl 16) or (v shl 8) or v
+            }
+        }
+        val bmp = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888)
+        bmp.setPixels(out, 0, outW, 0, 0, outW, outH)
+        return bmp
+    }
+
+    private companion object {
+        const val MIN_SIDE = 32
+        const val WHITE = -1 // 0xFFFFFFFF
+    }
+}
