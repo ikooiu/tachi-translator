@@ -54,15 +54,3 @@ internal class OcrEngine {
             clients.clear()
         }
     }
-
-    private fun Gray.toBitmap(): Bitmap {
-        val out = IntArray(w * h)
-        for (i in out.indices) {
-            val v = at(i)
-            out[i] = (0xFF shl 24) or (v shl 16) or (v shl 8) or v
-        }
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        bmp.setPixels(out, 0, w, 0, 0, w, h)
-        return bmp
-    }
-}
