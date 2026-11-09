@@ -112,7 +112,7 @@ internal class GoogleTranslate(
 
     private suspend fun free(text: String, sl: String, tl: String): String {
         val parts = TextCleanup.chunk(text, 1500)
-        return parts.joinToString(" ") { freeOne(it, sl, tl) }
+        return parts.map { freeOne(it, sl, tl) }.joinToString(" ")
     }
 
     private suspend fun freeOne(text: String, sl: String, tl: String): String {
