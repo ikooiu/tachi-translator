@@ -24,7 +24,8 @@
 ## التحقق والبناء
 
 - اكتمل `:app:assembleDebug` محلياً بنجاح باستخدام Android API 37؛ واجتاز APK فحوص سلامة الأرشيف.
-- أُعدّ المستودع لتشغيل سير عمل `Build debug APK` عبر GitHub Actions (`workflow_dispatch`).
+- اكتمل سير عمل GitHub Actions `Build debug APK` بنجاح خلال 6 دقائق و12 ثانية: [نتيجة التشغيل 43306118973](https://github.com/ikooiu/tachi-translator/actions/runs/43306118973).
+- بُنيت الشفرة على الفرع `manus/mlkit-fallback-1.13.3-20261113` من الالتزام `0939f60`؛ الملف الناتج متاح كـ artifact باسم `TachiyomiSY-translation-debug`.
 
 ## التوقيع والتحديث دون فقد البيانات
 
