@@ -743,7 +743,7 @@
     <string name="pref_category_translation">Page translation</string>
     <string name="pref_translation_summary">On-device OCR, Google Translate, languages</string>
     <string name="pref_translation_enable">Translate pages</string>
-    <string name="pref_translation_enable_summary">Reads the text in speech bubbles on this device and draws the translation over it. Only the extracted text is sent to Google Translate, never the image.</string>
+    <string name="pref_translation_enable_summary">Reads bubble text on this device and draws translations over it. Google Translate runs first; bubbles it cannot translate are retried with ML Kit on-device translation. ML Kit language models download on first use while online, then work offline. Images are never sent to Google.</string>
     <string name="pref_translation_reader_button">Translate button in the reader</string>
     <string name="pref_translation_reader_button_summary">Show a quick on/off button in the reader bottom bar</string>
     <string name="pref_translation_source_language">Original language</string>
@@ -754,7 +754,7 @@
     <string name="pref_translation_cache_summary">Reopening a chapter shows the translation instantly</string>
     <string name="pref_translation_clear_cache">Clear translated pages</string>
     <string name="pref_translation_cache_cleared">Translated pages cleared</string>
-    <string name="pref_translation_note">Works best on clean, high-resolution pages. Only text inside speech bubbles and caption boxes is translated. Settings changes apply to pages opened afterwards.</string>
+    <string name="pref_translation_note">Works best on clean, high-resolution pages. Only text inside speech bubbles and caption boxes is translated. A toast reports skipped bubbles and whether detection/OCR or both translation engines failed. Settings changes apply to pages opened afterwards.</string>
     <string name="translation_lang_auto">Automatic (use the source language)</string>
     <string name="translation_lang_ja">Japanese</string>
     <string name="translation_lang_zh">Chinese</string>

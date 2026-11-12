@@ -32,7 +32,7 @@ class TranslationPreferences(
 
     companion object {
         /** Bump when detection / rendering changes so old cached pages are not reused. */
-        const val RENDER_VERSION = "1"
+        const val RENDER_VERSION = "2"
 
         val SOURCE_LANGUAGES = listOf("auto", "ja", "zh", "ko", "en")
 

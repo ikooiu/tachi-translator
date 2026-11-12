@@ -31,8 +31,8 @@ android {
     defaultConfig {
         applicationId = "eu.kanade.tachiyomi.sy"
 
-        versionCode = 81
-        versionName = "1.13.2"
+        versionCode = 82
+        versionName = "1.13.3"
 
         buildConfigField("String", "UPSTREAM_VERSION", """"0.20.1"""")
 
@@ -260,6 +260,7 @@ dependencies {
     implementation(libs.mlkit.text.chinese)
     implementation(libs.mlkit.text.japanese)
     implementation(libs.mlkit.text.korean)
+    implementation(libs.mlkit.translate)
 
     // UI libraries
     implementation(libs.material)

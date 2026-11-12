@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.reader.translation
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -34,11 +35,13 @@ class ReaderTranslator(
 
     private val ocr = OcrEngine()
     private val google = GoogleTranslate()
+    private val mlKit = MLKitTranslate()
     private val lock = Mutex()
     private val cacheDir = File(context.cacheDir, "translated")
     private val detected = ConcurrentHashMap<String, OcrScript>()
     private var writes = 0
-    private var lastToast = 0L
+
+    @Volatile private var lastToast = 0L
 
     /** One piece of text found on the page, in bitmap pixels. */
     private class Found(
@@ -91,7 +94,7 @@ class ReaderTranslator(
                 throw e
             } catch (e: Throwable) {
                 logcat(LogPriority.ERROR, e) { "Page translation failed" }
-                reportError(e)
+                reportDiagnostic("Translation processing failed: ${e.message?.take(100) ?: e::class.java.simpleName}")
                 null
             }
         }
@@ -106,15 +109,22 @@ class ReaderTranslator(
         sourceKey: String,
         sourceLang: String?,
     ): ByteArray? {
-        val bitmap = decode(bytes) ?: return null
+        val bitmap = decode(bytes) ?: run {
+            reportDiagnostic("Translation skipped: page image could not be decoded for bubble detection/OCR.")
+            return null
+        }
         try {
             val page = grayOf(bitmap)
             val candidates = findCandidates(page)
             if (candidates.isEmpty()) {
+                reportDiagnostic("Translation skipped: 0 bubbles detected; bubble detection found no text boxes.")
                 if (useCache) writeCache(key, ByteArray(0))
                 return null
             }
-            val script = resolveScript(candidates, sourceKey, sourceLang) ?: return null
+            val script = resolveScript(candidates, sourceKey, sourceLang) ?: run {
+                reportDiagnostic("Translation skipped: ${candidates.size} text area(s) detected, but OCR could not identify a source language.")
+                return null
+            }
             val target = prefs.targetLanguage.get()
             if (script.google.substringBefore('-') == target) return null
 
@@ -123,16 +133,47 @@ class ReaderTranslator(
                 val text = readBlock(c.gray, c.det, c.block, script) ?: continue
                 found.add(Found(overlayBox(c, bitmap.width.toFloat() / page.w), c.dark, text, script))
             }
+            val ocrSkipped = candidates.size - found.size
             if (found.isEmpty()) {
+                reportDiagnostic("Translation skipped: ${candidates.size} detected bubble text area(s) could not be read by OCR.")
                 if (useCache) writeCache(key, ByteArray(0))
                 return null
             }
 
-            val translated = google.translate(found.map { it.text }, script, target, prefs.googleApiKey.get().trim())
+            // Download the model while Google is working so a first-time fallback is ready when possible.
+            mlKit.warmUp(script.code, target)
+            val googleResults = try {
+                google.translate(found.map { it.text }, script, target, prefs.googleApiKey.get().trim())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN, e) { "Google translation failed for this page; trying ML Kit" }
+                List(found.size) { null }
+            }
             val items = ArrayList<RenderItem>()
+            var translationSkipped = 0
             found.forEachIndexed { i, f ->
-                val tr = translated[i] ?: return@forEachIndexed
+                val tr = googleResults.getOrNull(i)?.takeIf { it.isNotBlank() } ?: try {
+                    mlKit.translate(f.text, script.code, target)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logcat(LogPriority.WARN, e) { "Both Google and ML Kit failed for one bubble" }
+                    null
+                }
+                if (tr.isNullOrBlank()) {
+                    translationSkipped++
+                    return@forEachIndexed
+                }
                 items.add(RenderItem(f.box.x0.toFloat(), f.box.y0.toFloat(), f.box.x1.toFloat(), f.box.y1.toFloat(), tr, f.dark))
+            }
+            val totalSkipped = ocrSkipped + translationSkipped
+            if (totalSkipped > 0) {
+                val reasons = buildList {
+                    if (ocrSkipped > 0) add("OCR could not read $ocrSkipped")
+                    if (translationSkipped > 0) add("Google + offline ML Kit could not translate $translationSkipped")
+                }.joinToString("; ")
+                reportDiagnostic("Translation partial: $totalSkipped/${candidates.size} bubbles skipped ($reasons).")
             }
             if (items.isEmpty()) return null
 
@@ -391,12 +432,21 @@ class ReaderTranslator(
 
     // endregion
 
-    private suspend fun reportError(e: Throwable) {
+    private suspend fun reportDiagnostic(message: String) {
         val now = System.currentTimeMillis()
-        if (now - lastToast < TOAST_INTERVAL) return
-        lastToast = now
-        val message = e.message?.take(120) ?: e::class.java.simpleName
-        withContext(Dispatchers.Main) { context.toast("Translation failed: $message") }
+        val shouldShow = synchronized(this) {
+            if (now - lastToast < TOAST_INTERVAL) {
+                false
+            } else {
+                lastToast = now
+                true
+            }
+        }
+        if (shouldShow) {
+            withContext(Dispatchers.Main) {
+                context.toast(message.take(180), Toast.LENGTH_LONG)
+            }
+        }
     }
 
     companion object {
